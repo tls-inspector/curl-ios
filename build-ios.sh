@@ -4,7 +4,7 @@
 # DOWNLOAD #
 ############
 
-VERSION=7.54.1
+VERSION=$1
 ARCHIVE=curl.tar.gz
 echo "Downloading curl ${VERSION}"
 curl "https://curl.haxx.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
@@ -44,7 +44,7 @@ function build() {
        --disable-ldap \
        --with-darwinssl
 
-    make -j `sysctl -n hw.logicalcpu_max`
+    make -sj `sysctl -n hw.logicalcpu_max`
     cp lib/.libs/libcurl.a ../$OUTDIR/libcurl-${ARCH}.a
     cd ../
     rm -rf "${WORKDIR}"
@@ -52,11 +52,11 @@ function build() {
 
 mkdir -p $OUTDIR
 
-build armv7   armv7   `xcrun --sdk iphoneos --show-sdk-path`
-build armv7s  armv7s  `xcrun --sdk iphoneos --show-sdk-path`
-build arm64    arm    `xcrun --sdk iphoneos --show-sdk-path`
-build i386    i386   `xcrun --sdk iphonesimulator --show-sdk-path`
-build x86_64  x86_64  `xcrun --sdk iphonesimulator --show-sdk-path`
+build armv7    armv7   `xcrun --sdk iphoneos --show-sdk-path`
+build armv7s   armv7s  `xcrun --sdk iphoneos --show-sdk-path`
+build arm64    arm     `xcrun --sdk iphoneos --show-sdk-path`
+build i386     i386    `xcrun --sdk iphonesimulator --show-sdk-path`
+build x86_64   x86_64  `xcrun --sdk iphonesimulator --show-sdk-path`
 
 lipo -arch armv7 $OUTDIR/libcurl-armv7.a \
    -arch armv7s $OUTDIR/libcurl-armv7s.a \

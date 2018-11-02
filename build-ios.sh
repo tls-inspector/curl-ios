@@ -53,7 +53,7 @@ function build() {
        --disable-ldap \
        --with-darwinssl > "${LOG}" 2>&1
 
-    make -j `sysctl -n hw.logicalcpu_max` > "${LOG}" 2>&1
+    make -j `sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1
     cp lib/.libs/libcurl.a ../../$OUTDIR/libcurl-${ARCH}.a
     cd ../
 }
@@ -70,6 +70,8 @@ build i386     i386    `xcrun --sdk iphonesimulator --show-sdk-path`
 build x86_64   x86_64  `xcrun --sdk iphonesimulator --show-sdk-path`
 
 cd ../
+
+rm ${ARCHIVE}
 
 lipo -arch armv7 $OUTDIR/libcurl-armv7.a \
    -arch armv7s $OUTDIR/libcurl-armv7s.a \
@@ -101,7 +103,8 @@ rm -rf $OUTDIR
 
 cp "Info.plist" $FWNAME.framework/Info.plist
 
-check_bitcode=`otool -arch arm64 -l $FWNAME.framework/$FWNAME | grep __bitcode`
+set +e
+check_bitcode=$(otool -arch arm64 -l $FWNAME.framework/$FWNAME | grep __bitcode)
 if [ -z "$check_bitcode" ]
 then
     echo "INFO: $FWNAME.framework doesn't contain Bitcode"

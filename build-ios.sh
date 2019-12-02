@@ -12,8 +12,10 @@ fi
 
 VERSION=$1
 ARCHIVE=curl.tar.gz
-echo "Downloading curl ${VERSION}"
-curl "https://curl.haxx.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
+if [ ! -f "${ARCHIVE}" ]; then
+    echo "Downloading curl ${VERSION}"
+    curl "https://curl.haxx.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
+fi
 
 ###########
 # COMPILE #
@@ -22,7 +24,6 @@ curl "https://curl.haxx.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
 export OUTDIR=output
 export BUILDDIR=build
 export IPHONEOS_DEPLOYMENT_TARGET="9.3"
-export CC=`xcrun -find -sdk iphoneos clang`
 
 function build() {
     ARCH=$1
@@ -36,10 +37,12 @@ function build() {
     tar -xzf "../${ARCHIVE}" -C "${WORKDIR}" --strip-components 1
     cd "${WORKDIR}"
 
-    export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -miphoneos-version-min=${IPHONEOS_DEPLOYMENT_TARGET} -fembed-bitcode"
-
-    export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
-
+    unset CFLAGS
+    unset LDFLAGS
+    CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -I${SDKDIR}/usr/include -miphoneos-version-min=${IPHONEOS_DEPLOYMENT_TARGET} -fembed-bitcode"
+    LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
+    export CFLAGS
+    export LDFLAGS
     ./configure --host="${HOST}-apple-darwin" \
        --disable-shared \
        --enable-static \
@@ -52,8 +55,7 @@ function build() {
        --disable-rtsp \
        --disable-ldap \
        --with-darwinssl > "${LOG}" 2>&1
-
-    make -j `sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1
+    make -j`sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1
     cp lib/.libs/libcurl.a ../../$OUTDIR/libcurl-${ARCH}.a
     cd ../
 }
@@ -66,7 +68,6 @@ cd $BUILDDIR
 build armv7    armv7   `xcrun --sdk iphoneos --show-sdk-path`
 build armv7s   armv7s  `xcrun --sdk iphoneos --show-sdk-path`
 build arm64    arm     `xcrun --sdk iphoneos --show-sdk-path`
-build i386     i386    `xcrun --sdk iphonesimulator --show-sdk-path`
 build x86_64   x86_64  `xcrun --sdk iphonesimulator --show-sdk-path`
 
 cd ../
@@ -76,7 +77,6 @@ rm ${ARCHIVE}
 lipo -arch armv7 $OUTDIR/libcurl-armv7.a \
    -arch armv7s $OUTDIR/libcurl-armv7s.a \
    -arch arm64 $OUTDIR/libcurl-arm64.a \
-   -arch i386 $OUTDIR/libcurl-i386.a \
    -arch x86_64 $OUTDIR/libcurl-x86_64.a \
    -create -output $OUTDIR/libcurl_all.a
 

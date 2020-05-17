@@ -37,6 +37,10 @@ function build() {
     tar -xzf "../${ARCHIVE}" -C "${WORKDIR}" --strip-components 1
     cd "${WORKDIR}"
 
+    for FILE in $(find ../../patches -name '*.patch'); do
+        patch -p1 < ${FILE}
+    done
+
     unset CFLAGS
     unset LDFLAGS
     CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -I${SDKDIR}/usr/include -miphoneos-version-min=${IPHONEOS_DEPLOYMENT_TARGET} -fembed-bitcode"

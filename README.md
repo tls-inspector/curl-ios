@@ -1,13 +1,17 @@
-# libcurl-ios
+# curl-ios
 
-A simple build script to compile libcurl to a dylib framework for iOS apps. This script is loosely based off of [x2on/OpenSSL-for-iPhone](https://github.com/x2on/OpenSSL-for-iPhone).
+A script to compile curl for iOS and iPadOS applications.
 
 # Instructions
 
 It's as simple as:
 
 ```
-./build-ios.sh <curl_version>
+./build-ios.sh <curl version>
 ```
 
-Then add the resulting curl.framework package to your app and you're done.
+Then add the resulting `curl.xcframework` package to your app and you're finished.
+
+# License
+
+This script is licensed under GPLv3. curl is licensed under MIT.

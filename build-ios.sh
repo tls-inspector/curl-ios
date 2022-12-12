@@ -14,104 +14,80 @@ VERSION=$1
 ARCHIVE=curl.tar.gz
 if [ ! -f "${ARCHIVE}" ]; then
     echo "Downloading curl ${VERSION}"
-    curl "https://curl.haxx.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
+    curl "https://curl.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
 fi
 
 ###########
 # COMPILE #
 ###########
 
-export OUTDIR=output
-export BUILDDIR=build
-export IPHONEOS_DEPLOYMENT_TARGET="9.3"
+BUILDDIR=build
 
 function build() {
     ARCH=$1
     HOST=$2
-    SDKDIR=$3
-    LOG="../${ARCH}_build.log"
-    echo "Building libcurl for ${ARCH}..."
+    SDK=$3
+    SDKDIR=$(xcrun --sdk ${SDK} --show-sdk-path)
+    LOG="../${ARCH}-${SDK}_build.log"
+    echo "Building libcurl for ${ARCH}-${SDK}..."
 
-    WORKDIR=curl_${ARCH}
+    WORKDIR=curl_${ARCH}-${SDK}
     mkdir "${WORKDIR}"
     tar -xzf "../${ARCHIVE}" -C "${WORKDIR}" --strip-components 1
     cd "${WORKDIR}"
 
-    for FILE in $(find ../../patches -name '*.patch'); do
+    for FILE in $(find ../../patches -name '*.patch' 2>/dev/null); do
         patch -p1 < ${FILE}
     done
 
-    unset CFLAGS
-    unset LDFLAGS
-    CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -I${SDKDIR}/usr/include -miphoneos-version-min=${IPHONEOS_DEPLOYMENT_TARGET} -fembed-bitcode"
-    LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
-    export CFLAGS
-    export LDFLAGS
-    ./configure --host="${HOST}-apple-darwin" \
+    export CC=$(xcrun -find -sdk ${SDK} gcc)
+    export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -m${SDK}-version-min=12.0"
+    export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
+
+    ./configure \
+       --host="${HOST}-apple-darwin" \
        --disable-shared \
        --enable-static \
-       --disable-smtp \
-       --disable-pop3 \
-       --disable-imap \
-       --disable-ftp \
-       --disable-tftp \
-       --disable-telnet \
-       --disable-rtsp \
-       --disable-ldap \
-       --with-darwinssl > "${LOG}" 2>&1
+       --without-libidn2 \
+       --without-nghttp2 \
+       --without-nghttp3 \
+       --with-secure-transport \
+       --prefix $(pwd)/artifacts > "${LOG}" 2>&1
+
     make -j`sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1
-    cp lib/.libs/libcurl.a ../../$OUTDIR/libcurl-${ARCH}.a
+    make install >> "${LOG}" 2>&1
     cd ../
 }
 
-rm -rf $OUTDIR $BUILDDIR
-mkdir $OUTDIR
-mkdir $BUILDDIR
-cd $BUILDDIR
+rm -rf ${BUILDDIR}
+mkdir ${BUILDDIR}
+cd ${BUILDDIR}
 
-build armv7    armv7   `xcrun --sdk iphoneos --show-sdk-path`
-build armv7s   armv7s  `xcrun --sdk iphoneos --show-sdk-path`
-build arm64    arm     `xcrun --sdk iphoneos --show-sdk-path`
-build x86_64   x86_64  `xcrun --sdk iphonesimulator --show-sdk-path`
+build arm64   arm     iphoneos
+build arm64   arm     iphonesimulator
+build x86_64  x86_64  iphonesimulator
 
 cd ../
-
-rm ${ARCHIVE}
-
-lipo -arch armv7 $OUTDIR/libcurl-armv7.a \
-   -arch armv7s $OUTDIR/libcurl-armv7s.a \
-   -arch arm64 $OUTDIR/libcurl-arm64.a \
-   -arch x86_64 $OUTDIR/libcurl-x86_64.a \
-   -create -output $OUTDIR/libcurl_all.a
 
 ###########
 # PACKAGE #
 ###########
 
-FWNAME=curl
+lipo \
+   -arch arm64  ${BUILDDIR}/curl_arm64-iphonesimulator/artifacts/lib/libcurl.a \
+   -arch x86_64 ${BUILDDIR}/curl_x86_64-iphonesimulator/artifacts/lib/libcurl.a \
+   -create -output ${BUILDDIR}/libcurl.a
 
-if [ -d $FWNAME.framework ]; then
-    echo "Removing previous $FWNAME.framework copy"
-    rm -rf $FWNAME.framework
-fi
+rm -rf ${BUILDDIR}/iphoneos/curl.framework ${BUILDDIR}/iphonesimulator/curl.framework
+mkdir -p ${BUILDDIR}/iphoneos/curl.framework/Headers ${BUILDDIR}/iphonesimulator/curl.framework/Headers
+libtool -no_warning_for_no_symbols -static -o ${BUILDDIR}/iphoneos/curl.framework/curl ${BUILDDIR}/curl_arm64-iphoneos/artifacts/lib/libcurl.a
+cp -r ${BUILDDIR}/curl_arm64-iphoneos/artifacts/include/curl/*.h ${BUILDDIR}/iphoneos/curl.framework/Headers
+libtool -no_warning_for_no_symbols -static -o ${BUILDDIR}/iphonesimulator/curl.framework/curl ${BUILDDIR}/libcurl.a
+cp -r ${BUILDDIR}/curl_arm64-iphonesimulator/artifacts/include/curl/*.h ${BUILDDIR}/iphonesimulator/curl.framework/Headers
 
-LIBTOOL_FLAGS="-static"
-
-echo "Creating $FWNAME.framework"
-mkdir -p $FWNAME.framework/Headers
-libtool -no_warning_for_no_symbols $LIBTOOL_FLAGS -o $FWNAME.framework/$FWNAME $OUTDIR/libcurl_all.a
-cp -r $BUILDDIR/curl_arm64/include/$FWNAME/*.h $FWNAME.framework/Headers/
-
-rm -rf $BUILDDIR
-rm -rf $OUTDIR
-
-cp "Info.plist" $FWNAME.framework/Info.plist
-
-set +e
-check_bitcode=$(otool -arch arm64 -l $FWNAME.framework/$FWNAME | grep __bitcode)
-if [ -z "$check_bitcode" ]
-then
-    echo "INFO: $FWNAME.framework doesn't contain Bitcode"
-else
-    echo "INFO: $FWNAME.framework contains Bitcode"
-fi
+rm -rf curl.xcframework
+xcodebuild -create-xcframework \
+    -framework ${BUILDDIR}/iphoneos/curl.framework \
+    -framework ${BUILDDIR}/iphonesimulator/curl.framework \
+    -output curl.xcframework
+plutil -insert CFBundleVersion -string ${VERSION} curl.xcframework/Info.plist

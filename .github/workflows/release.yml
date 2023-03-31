@@ -21,8 +21,9 @@ jobs:
       - name: "Get latest release"
         id: query
         run: |
-          LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://api.github.com/repos/curl/curl/releases/latest | jq -r .name)
-          LATEST_CURL_IOS_RELEASE=$(curl -sS https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
+          set +x
+          LATEST_OFFICIAL_CURL_RELEASE=$(curl https://api.github.com/repos/curl/curl/releases/latest | jq -r .name)
+          LATEST_CURL_IOS_RELEASE=$(curl https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
           echo "::notice ::Latest curl release: ${LATEST_OFFICIAL_CURL_RELEASE}, last published framework: ${LATEST_CURL_IOS_RELEASE}"
           echo "curl_version=${LATEST_OFFICIAL_CURL_RELEASE}" >> $GITHUB_OUTPUT
           if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then

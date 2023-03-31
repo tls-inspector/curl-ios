@@ -23,7 +23,7 @@ jobs:
         run: |
           LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://api.github.com/repos/curl/curl/releases/latest | jq -r .name)
           LATEST_CURL_IOS_RELEASE=$(curl -sS https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
-          echo "curl_version=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
+          echo "curl_version=${LATEST_OFFICIAL_CURL_RELEASE}" >> $GITHUB_OUTPUT
           if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then
             echo "needs_update=yes" >> $GITHUB_OUTPUT
           else

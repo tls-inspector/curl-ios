@@ -65,6 +65,7 @@ jobs:
         with:
           name: ${{ needs.query.outputs.curl_version }}
           body: "curl.xcframework.zip SHA-256 `${{ steps.prepare.outputs.framework_checksum }}`"
+          tag_name: ${{ needs.query.outputs.curl_version }}
           files: |
             curl.xcframework.zip
             curl.xcframework.zip.sig

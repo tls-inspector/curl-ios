@@ -45,6 +45,8 @@ jobs:
       - name: Compile Framework
         id: compile
         run: |
-          echo "-----BEGIN EC PRIVATE KEY-----\n${{ secrets.SIGNING_KEY }}\n-----END EC PRIVATE KEY-----\n" > private_key.pem
+          echo "-----BEGIN EC PRIVATE KEY-----" >> private_key.pem
+          echo '${{ secrets.SIGNING_KEY }}' >> private_key.pem
+          echo "-----END EC PRIVATE KEY-----" >> private_key.pem
           openssl dgst -sign private_key.pem -sha256 -out LICENSE.sig LICENSE
           rm -f private_key.pem

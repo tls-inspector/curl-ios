@@ -14,8 +14,12 @@ jobs:
   query:
     name: "Check for updates"
     runs-on: macos-latest
+    outputs:
+      curl_version: ${{ steps.query.outputs.curl_version }}
+      needs_update: ${{ steps.query.outputs.needs_update }}
     steps:
       - name: "Get latest release"
+        id: query
         run: |
           LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://api.github.com/repos/curl/curl/releases/latest | jq -r .name)
           LATEST_CURL_IOS_RELEASE=$(curl -sS https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
@@ -25,6 +29,7 @@ jobs:
           else
             echo "needs_update=no" >> $GITHUB_OUTPUT
           fi
+          cat $GITHUB_OUTPUT
   update:
     name: "Compile"
     needs: query

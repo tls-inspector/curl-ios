@@ -2,3 +2,5 @@
 build/
 *.xcframework/
 *.tar.gz
+*.zip
+*.zip.sig

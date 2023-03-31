@@ -45,19 +45,6 @@ jobs:
       - name: Compile Framework
         id: compile
         run: |
-          ./build-ios.sh ${{ needs.query.outputs.curl_version }}
-          zip -r curl.xcframework.zip curl.xcframework/
-          SHASUM=$(shasum -a 256 curl.xcframework.zip | cut -d ' ' -f1)
-          echo "framework_checksum=${SHASUM}" >> $GITHUB_OUTPUT
-          echo "-----BEGIN EC PRIVATE KEY-----\n${{ secrets.SIGNING_KEY }}\n-----END EC PRIVATE KEY-----\n" > signing_key.pem
-          openssl dgst -sign signing_key.pem -sha256 -out curl.xcframework.zip.sig curl.xcframework.zip
-          rm -f signing_key.pem
-      - name: Make Release If Needed
-        id: release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # pin@v1
-        with:
-          name: ${{ needs.query.outputs.curl_version }}
-          body: "curl.xcframework.zip SHA-256 `${{ steps.compile.outputs.framework_checksum }}`"
-          files: |
-            curl.xcframework.zip
-            curl.xcframework.zip.sig
+          echo "-----BEGIN EC PRIVATE KEY-----\n${{ secrets.SIGNING_KEY }}\n-----END EC PRIVATE KEY-----\n" > private_key.pem
+          openssl dgst -sign private_key.pem -sha256 -out LICENSE.sig LICENSE
+          rm -f private_key.pem

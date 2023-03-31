@@ -7,8 +7,10 @@ A script to compile curl for iOS and iPadOS applications.
 It's as simple as:
 
 ```
-./build-ios.sh <curl version>
+./build-ios.sh <curl version> [optional configure parameters]
 ```
+
+The following config parameters are always provided: `--disable-shared`, `--enable-static`, `--with-secure-transport`
 
 Then add the resulting `curl.xcframework` package to your app and you're finished.
 

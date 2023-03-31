@@ -5,6 +5,8 @@ if [ -z "$1" ]; then
     echo "Usage: $0 <CURL Version>"
     exit 1
 fi
+shift
+BUILD_ARGS="$@"
 
 ############
 # DOWNLOAD #
@@ -44,14 +46,14 @@ function build() {
     export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -m${SDK}-version-min=12.0"
     export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
 
+    echo "configure parameters: ${BUILD_ARGS}" >> "${LOG}"
+
     ./configure \
        --host="${HOST}-apple-darwin" \
        --disable-shared \
        --enable-static \
-       --without-libidn2 \
-       --without-nghttp2 \
-       --without-nghttp3 \
        --with-secure-transport \
+       $BUILD_ARGS \
        --prefix $(pwd)/artifacts > "${LOG}" 2>&1
 
     make -j`sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1

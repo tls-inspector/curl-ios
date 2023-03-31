@@ -5,6 +5,8 @@ if [ -z "$1" ]; then
     echo "Usage: $0 <CURL Version>"
     exit 1
 fi
+
+VERSION=$1
 shift
 BUILD_ARGS="$@"
 
@@ -12,7 +14,6 @@ BUILD_ARGS="$@"
 # DOWNLOAD #
 ############
 
-VERSION=$1
 ARCHIVE=curl.tar.gz
 if [ ! -f "${ARCHIVE}" ]; then
     echo "Downloading curl ${VERSION}"

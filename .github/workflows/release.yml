@@ -21,8 +21,10 @@ jobs:
           LATEST_CURL_IOS_RELEASE=$(curl -sS https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
           echo "CURL_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
           if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then
+            echo "New release of curl detected, need to update"
             exit 0
           else
+            echo "No new release of curl detected, no need to update"
             exit 1
           fi
   update:

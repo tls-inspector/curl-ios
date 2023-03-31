@@ -1,0 +1,38 @@
+name: "Build curl framework"
+
+on:
+  push:
+    branches: ["main"]
+  schedule:
+    - cron: "18 18 * * *"
+
+permissions:
+  packages: read
+  contents: write
+
+jobs:
+  query:
+    name: "Check for updates"
+    runs-on: macos-latest
+    steps:
+      - name: "Get latest release"
+        run: |
+          LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://api.github.com/repos/curl/curl/releases/latest | jq -r .name)
+          LATEST_CURL_IOS_RELEASE=$(curl -sS https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
+          echo "CURL_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
+          if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then
+            exit 0
+          else
+            exit 1
+          fi
+  update:
+    name: "Compile"
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Source
+        id: checkout
+        uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # pin@v3.4.0
+      - name: Compile Framework
+        id: compile
+        run: |
+          ./build-ios.sh ${CURL_RELEASE}

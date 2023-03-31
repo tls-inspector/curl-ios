@@ -19,16 +19,16 @@ jobs:
         run: |
           LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://api.github.com/repos/curl/curl/releases/latest | jq -r .name)
           LATEST_CURL_IOS_RELEASE=$(curl -sS https://api.github.com/repos/tls-inspector/curl-ios/releases/latest | jq -r .name)
-          echo "CURL_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
+          echo "curl_version=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
           if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then
-            echo "New release of curl detected, need to update"
-            exit 0
+            echo "needs_update=yes" >> $GITHUB_OUTPUT
           else
-            echo "No new release of curl detected, no need to update"
-            exit 1
+            echo "needs_update=no" >> $GITHUB_OUTPUT
           fi
   update:
     name: "Compile"
+    needs: query
+    if: needs.query.outputs.needs_update == 'yes'
     runs-on: macos-latest
     steps:
       - name: Checkout Source
@@ -37,4 +37,4 @@ jobs:
       - name: Compile Framework
         id: compile
         run: |
-          ./build-ios.sh ${CURL_RELEASE}
+          ./build-ios.sh ${{ needs.query.outputs.curl_version }}

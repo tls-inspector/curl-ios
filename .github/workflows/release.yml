@@ -54,10 +54,11 @@ jobs:
         run: |
           SHASUM=$(shasum -a 256 curl.xcframework.zip | cut -d ' ' -f1)
           echo "framework_checksum=${SHASUM}" >> $GITHUB_OUTPUT
+          echo "::notice ::curl.xcframework.zip checksum: ${SHASUM}"
           echo "-----BEGIN EC PRIVATE KEY-----" >> private_key.pem
           echo '${{ secrets.SIGNING_KEY }}' >> private_key.pem
           echo "-----END EC PRIVATE KEY-----" >> private_key.pem
-          openssl dgst -sign private_key.pem -sha256 -out LICENSE.sig LICENSE
+          openssl dgst -sign private_key.pem -sha256 -out curl.xcframework.zip.sig curl.xcframework.zip
           rm -f private_key.pem
       - name: Make Release If Needed
         id: release

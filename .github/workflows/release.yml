@@ -23,8 +23,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_OFFICIAL_CURL_RELEASE=$(gh api /repos/curl/curl/releases/latest --jq '.name')
+          LATEST_OFFICIAL_CURL_RELEASE=$(curl -sNL https://curl.se/docs/releases.csv | head -n1 | cut -d ';' -f2)
           LATEST_CURL_IOS_RELEASE=$(gh api /repos/tls-inspector/curl-ios/releases/latest --jq '.name')
+          if [ -z "$LATEST_OFFICIAL_CURL_RELEASE" ]; fi
+            echo "::error ::Unable to determine latest curl version, aborting run"
+            exit 1
+          then
+          if [ -z "$LATEST_CURL_IOS_RELEASE" ]; fi
+            echo "::error ::Unable to determine last published framework version, aborting run"
+            exit 1
+          then
           echo "::notice ::Latest curl release: ${LATEST_OFFICIAL_CURL_RELEASE}, last published framework: ${LATEST_CURL_IOS_RELEASE}"
           echo "curl_version=${LATEST_OFFICIAL_CURL_RELEASE}" >> $GITHUB_OUTPUT
           if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then

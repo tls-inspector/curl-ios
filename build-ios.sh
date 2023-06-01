@@ -14,7 +14,7 @@ BUILD_ARGS="$@"
 # DOWNLOAD #
 ############
 
-ARCHIVE=curl.tar.gz
+ARCHIVE="curl-${VERSION}.tar.gz"
 if [ ! -f "${ARCHIVE}" ]; then
     echo "Downloading curl ${VERSION}"
     curl "https://curl.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"

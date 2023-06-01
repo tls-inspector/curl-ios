@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_OFFICIAL_CURL_RELEASE=$(curl -sNL https://curl.se/docs/releases.csv | head -n1 | cut -d ';' -f2)
+          LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://curl.se/info | grep 'Version:' | cut -d ' ' -f2)
           LATEST_CURL_IOS_RELEASE=$(gh api /repos/tls-inspector/curl-ios/releases/latest --jq '.name')
           if [ -z "$LATEST_OFFICIAL_CURL_RELEASE" ]; then
             echo "::error ::Unable to determine latest curl version, aborting run"
@@ -55,7 +55,11 @@ jobs:
       - name: Compile Framework
         id: compile
         run: |
-          ./build-ios.sh ${{ needs.query.outputs.curl_version }}
+          gpg --import ./curl.asc
+          echo -e "5\ny\n" |  gpg --command-fd 0 --expert --edit-key 914C533DF9B2ADA2204F586D78E11C6B279D5C91 trust
+          echo -e "5\ny\n" |  gpg --command-fd 0 --expert --edit-key 4461EAF0F8E9097F48AF0555F9FEAFF9D34A1BDB trust
+          echo -e "5\ny\n" |  gpg --command-fd 0 --expert --edit-key 27EDEAF22F3ABCEB50DB9A125CC908FDB71E12C2 trust
+          GPG_VERIFY=1 ./build-ios.sh ${{ needs.query.outputs.curl_version }}
           zip -r curl.xcframework.zip curl.xcframework/
       - name: Prepare Release
         id: prepare

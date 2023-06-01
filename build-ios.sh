@@ -20,6 +20,13 @@ if [ ! -f "${ARCHIVE}" ]; then
     curl "https://curl.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
 fi
 
+if [ ! -z "${GPG_VERIFY}" ]; then
+    echo "Verifying signature for curl-${VERSION}.tar.gz"
+    rm -f "${ARCHIVE}.asc"
+    curl "https://curl.se/download/curl-${VERSION}.tar.gz.asc" > "${ARCHIVE}.asc"
+    gpg --verify "${ARCHIVE}.asc" "${ARCHIVE}" >/dev/null
+fi
+
 ###########
 # COMPILE #
 ###########

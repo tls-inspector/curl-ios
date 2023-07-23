@@ -56,9 +56,9 @@ jobs:
         id: compile
         run: |
           gpg --import ./curl.asc
-          echo -e "5\ny\n" |  gpg --command-fd 0 --expert --edit-key 914C533DF9B2ADA2204F586D78E11C6B279D5C91 trust
-          echo -e "5\ny\n" |  gpg --command-fd 0 --expert --edit-key 4461EAF0F8E9097F48AF0555F9FEAFF9D34A1BDB trust
-          echo -e "5\ny\n" |  gpg --command-fd 0 --expert --edit-key 27EDEAF22F3ABCEB50DB9A125CC908FDB71E12C2 trust
+          echo 'trusted-key 0x78E11C6B279D5C91' >> ~/.gnupg/gpg.conf
+          echo 'trusted-key 0xF9FEAFF9D34A1BDB' >> ~/.gnupg/gpg.conf
+          echo 'trusted-key 0x5CC908FDB71E12C2' >> ~/.gnupg/gpg.conf
           GPG_VERIFY=1 ./build-ios.sh ${{ needs.query.outputs.curl_version }}
           zip -r curl.xcframework.zip curl.xcframework/
       - name: Prepare Release

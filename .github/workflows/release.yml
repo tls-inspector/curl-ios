@@ -51,7 +51,7 @@ jobs:
     steps:
       - name: Checkout Source
         id: checkout
-        uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # pin@v3.4.0
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
       - name: Compile Framework
         id: compile
         run: |
@@ -61,6 +61,11 @@ jobs:
           echo 'trusted-key 0x5CC908FDB71E12C2' >> ~/.gnupg/gpg.conf
           GPG_VERIFY=1 ./build-ios.sh ${{ needs.query.outputs.curl_version }}
           zip -r curl.xcframework.zip curl.xcframework/
+      - uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # pin@v4.3.0
+        if: failure()
+        with:
+          name: build_output
+          path: build/*_build.log
       - name: Prepare Release
         id: prepare
         run: |

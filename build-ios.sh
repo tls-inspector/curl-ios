@@ -53,16 +53,15 @@ function build() {
     export CC=$(xcrun -find -sdk ${SDK} gcc)
     export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -m${SDK}-version-min=12.0"
     export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
+    BUILD_ARGS="--disable-shared --enable-static --with-secure-transport --without-libpsl ${BUILD_ARGS}"
 
+    echo "build variables: CC=\"${CC}\" CFLAGS=\"${CFLAGS}\" LDFLAGS=\"${LDFLAGS}\"" >> "${LOG}"
     echo "configure parameters: ${BUILD_ARGS}" >> "${LOG}"
 
     ./configure \
        --host="${HOST}-apple-darwin" \
-       --disable-shared \
-       --enable-static \
-       --with-secure-transport \
        $BUILD_ARGS \
-       --prefix $(pwd)/artifacts > "${LOG}" 2>&1
+       --prefix $(pwd)/artifacts >> "${LOG}" 2>&1
 
     make -j`sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1
     make install >> "${LOG}" 2>&1

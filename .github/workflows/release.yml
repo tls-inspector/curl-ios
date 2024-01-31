@@ -13,7 +13,7 @@ permissions:
 jobs:
   query:
     name: "Check for updates"
-    runs-on: macos-latest
+    runs-on: macos-14
     outputs:
       curl_version: ${{ steps.query.outputs.curl_version }}
       needs_update: ${{ steps.query.outputs.needs_update }}
@@ -45,7 +45,7 @@ jobs:
     name: "Compile"
     needs: query
     if: needs.query.outputs.needs_update == 'yes'
-    runs-on: macos-latest
+    runs-on: macos-14
     outputs:
       framework_checksum: ${{ steps.prepare.outputs.framework_checksum }}
     steps:

@@ -27,4 +27,8 @@ Use the included build script to compile a specific version or customize the con
 ./build-ios.sh <curl version> [optional configure parameters]
 ```
 
+To enable gpg verification of downloaded artifacts set the `GPG_VERIFY` environment variable to `1`.
+
+If you are building for use with a Swift package, you need to set the `WITH_MODULE_MAP` environment variable to `1`.
+
 The following config parameters are always provided: `--disable-shared`, `--enable-static`, `--with-secure-transport --without-libpsl`

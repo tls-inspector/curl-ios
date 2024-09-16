@@ -94,6 +94,25 @@ cp -r ${BUILDDIR}/curl_arm64-iphoneos/artifacts/include/curl/*.h ${BUILDDIR}/iph
 libtool -no_warning_for_no_symbols -static -o ${BUILDDIR}/iphonesimulator/curl.framework/curl ${BUILDDIR}/libcurl.a
 cp -r ${BUILDDIR}/curl_arm64-iphonesimulator/artifacts/include/curl/*.h ${BUILDDIR}/iphonesimulator/curl.framework/Headers
 
+# Inject a module map so Swift can consume this
+function make_modulemap {
+    PLATFORM=${1}
+    mkdir -p ${BUILDDIR}/${PLATFORM}/curl.framework/Modules
+    echo "framework module Curl {" > ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
+    echo "    header \"shim.h\"" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
+    for HEADER in $(ls ${BUILDDIR}/${PLATFORM}/curl.framework/Headers); do
+        echo "    header \"${HEADER}\"" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
+    done
+    echo "    export *" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
+    echo "}" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
+    cp shim.h ${BUILDDIR}/${PLATFORM}/curl.framework/Headers
+}
+
+if [ ! -z "${WITH_MODULE_MAP}" ]; then
+    make_modulemap iphoneos
+    make_modulemap iphonesimulator
+fi
+
 rm -rf curl.xcframework
 xcodebuild -create-xcframework \
     -framework ${BUILDDIR}/iphoneos/curl.framework \

@@ -3,5 +3,12 @@ build/
 *.xcframework/
 *.tar.gz
 *.tar.gz.asc
+*.tar.xz
+*.tar.xz.sig
 *.zip
 *.zip.sig
+*.pem
+!rootca_signing_key.pem
+!openssl_signing_key.pem
+!signingkey.pem
+*.pem.sig

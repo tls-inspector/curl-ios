@@ -6,6 +6,8 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+UA="github.com/tls-inspector/curl-ios"
+
 VERSION=$1
 shift
 BUILD_ARGS="$@"
@@ -17,14 +19,42 @@ BUILD_ARGS="$@"
 ARCHIVE="curl-${VERSION}.tar.gz"
 if [ ! -f "${ARCHIVE}" ]; then
     echo "Downloading curl ${VERSION}"
-    curl "https://curl.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
+    curl -A "${UA}" "https://curl.se/download/curl-${VERSION}.tar.gz" > "${ARCHIVE}"
+
+    if [ ! -z "${VERIFY}" ]; then
+        echo "Verifying signature for curl-${VERSION}.tar.gz"
+        rm -f "${ARCHIVE}.asc"
+        curl -A "${UA}" "https://curl.se/download/curl-${VERSION}.tar.gz.asc" > "${ARCHIVE}.asc"
+        gpg --verify "${ARCHIVE}.asc" "${ARCHIVE}" >/dev/null
+        echo "Verified signature for ${ARCHIVE} successfully!"
+    fi
 fi
 
-if [ ! -z "${GPG_VERIFY}" ]; then
-    echo "Verifying signature for curl-${VERSION}.tar.gz"
-    rm -f "${ARCHIVE}.asc"
-    curl "https://curl.se/download/curl-${VERSION}.tar.gz.asc" > "${ARCHIVE}.asc"
-    gpg --verify "${ARCHIVE}.asc" "${ARCHIVE}" >/dev/null
+OPENSSL_VERSION=$(curl -A "${UA}" -Ss https://api.github.com/repos/tls-inspector/openssl-ios/tags | jq -r '.[0].name')
+OPENSSL_ARCHIVE="openssl-${OPENSSL_VERSION}.tar.xz"
+if [ ! -f "${OPENSSL_ARCHIVE}" ]; then
+    echo "Downloading openssl ${OPENSSL_VERSION}"
+    curl -A "${UA}" -L "https://github.com/tls-inspector/openssl-ios/releases/download/${OPENSSL_VERSION}/openssl.tar.xz" > "${OPENSSL_ARCHIVE}"
+
+    if [ ! -z "${VERIFY}" ]; then
+        echo "Verifying signature for ${OPENSSL_ARCHIVE}"
+        rm -f "${OPENSSL_ARCHIVE}.sig"
+        curl -A "${UA}" -L "https://github.com/tls-inspector/openssl-ios/releases/download/${OPENSSL_VERSION}/openssl.tar.xz.sig" > "${OPENSSL_ARCHIVE}.sig"
+        openssl dgst -sha256 -verify signingkey.pem -signature ${OPENSSL_ARCHIVE}.sig ${OPENSSL_ARCHIVE}
+    fi
+fi
+
+CA_BUNDLE_FILE="apple_ca_bundle.pem"
+if [ ! -f "${CA_BUNDLE_FILE}" ]; then
+    echo "Downloading apple root ca bundle"
+    BUNDLE_VERSION=$(curl -A "${UA}" -Ss https://api.github.com/repos/tls-inspector/rootca/tags | jq -r '.[0].name')
+    curl -A "${UA}" -LSs "https://raw.githubusercontent.com/tls-inspector/rootca/${BUNDLE_VERSION}/bundles/${CA_BUNDLE_FILE}" > ${CA_BUNDLE_FILE}
+
+    if [ ! -z "${VERIFY}" ]; then
+        echo "Verifying signature for ${OPENSSL_ARCHIVE}"
+        curl -A "${UA}" -LSs "https://raw.githubusercontent.com/tls-inspector/rootca/${BUNDLE_VERSION}/bundles/${CA_BUNDLE_FILE}.sig" > ${CA_BUNDLE_FILE}.sig
+        openssl dgst -sha256 -verify rootca_signing_key.pem -signature ${CA_BUNDLE_FILE}.sig ${CA_BUNDLE_FILE}
+    fi
 fi
 
 ###########
@@ -50,10 +80,15 @@ function build() {
         patch -p1 < ${FILE}
     done
 
+    cp ../../apple_ca_bundle.pem .
+
+    OPENSSL_ARTIFACTS=$(readlink -f ../openssl_${ARCH}-${SDK}/artifacts)
+
     export CC=$(xcrun -find -sdk ${SDK} gcc)
     export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -m${SDK}-version-min=12.0"
-    export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
-    BUILD_ARGS="--disable-shared --enable-static --with-secure-transport --without-libpsl ${BUILD_ARGS}"
+    export CPPFLAGS="-I${OPENSSL_ARTIFACTS}/include"
+    export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR} -L${OPENSSL_ARTIFACTS}/lib"
+    BUILD_ARGS="--disable-shared --enable-static --with-openssl --without-libpsl --with-ca-bundle=apple_ca_bundle.pem ${BUILD_ARGS}"
 
     echo "build variables: CC=\"${CC}\" CFLAGS=\"${CFLAGS}\" LDFLAGS=\"${LDFLAGS}\"" >> "${LOG}"
     echo "configure parameters: ${BUILD_ARGS}" >> "${LOG}"
@@ -70,7 +105,10 @@ function build() {
 
 rm -rf ${BUILDDIR}
 mkdir ${BUILDDIR}
+cp ${OPENSSL_ARCHIVE} ${BUILDDIR}
 cd ${BUILDDIR}
+tar -xf ${OPENSSL_ARCHIVE}
+mv build openssl
 
 build arm64   arm     iphoneos
 build arm64   arm     iphonesimulator

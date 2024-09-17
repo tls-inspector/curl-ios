@@ -2,6 +2,8 @@
 
 Pre-compiled libcurl framework for iOS and iPadOS applications! Automatically updated within 24-hours of a new release of curl.
 
+This copy of curl is built to use [OpenSSL](https://github.com/tls-inspector/openssl-ios) and references these [Apple-trusted root CA certificates](https://github.com/tls-inspector/rootca).
+
 ## Using the pre-compiled framework
 
 1. Download and extract curl.xcframework.zip from the latest release
@@ -27,8 +29,8 @@ Use the included build script to compile a specific version or customize the con
 ./build-ios.sh <curl version> [optional configure parameters]
 ```
 
-To enable gpg verification of downloaded artifacts set the `GPG_VERIFY` environment variable to `1`.
+To enable signature verification of downloaded artifacts set the `VERIFY` environment variable to `1`.
 
 If you are building for use with a Swift package, you need to set the `WITH_MODULE_MAP` environment variable to `1`.
 
-The following config parameters are always provided: `--disable-shared`, `--enable-static`, `--with-secure-transport --without-libpsl`
+The following curl build parameters are always specified: `--disable-shared`, `--enable-static`, `--with-openssl`, and `--without-libpsl`

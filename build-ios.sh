@@ -10,12 +10,13 @@ UA="github.com/tls-inspector/curl-ios"
 
 VERSION=$1
 shift
-BUILD_ARGS="$@"
+BUILD_ARGS="$@ --disable-shared --enable-static --without-libpsl"
 
 ############
 # DOWNLOAD #
 ############
 
+# Download curl
 ARCHIVE="curl-${VERSION}.tar.gz"
 if [ ! -f "${ARCHIVE}" ]; then
     echo "Downloading curl ${VERSION}"
@@ -30,6 +31,7 @@ if [ ! -f "${ARCHIVE}" ]; then
     fi
 fi
 
+# Download openssl
 OPENSSL_VERSION=$(curl -A "${UA}" -Ss https://api.github.com/repos/tls-inspector/openssl-ios/tags | jq -r '.[0].name')
 OPENSSL_ARCHIVE="openssl-${OPENSSL_VERSION}.tar.xz"
 if [ ! -f "${OPENSSL_ARCHIVE}" ]; then
@@ -41,19 +43,6 @@ if [ ! -f "${OPENSSL_ARCHIVE}" ]; then
         rm -f "${OPENSSL_ARCHIVE}.sig"
         curl -A "${UA}" -L "https://github.com/tls-inspector/openssl-ios/releases/download/${OPENSSL_VERSION}/openssl.tar.xz.sig" > "${OPENSSL_ARCHIVE}.sig"
         openssl dgst -sha256 -verify signingkey.pem -signature ${OPENSSL_ARCHIVE}.sig ${OPENSSL_ARCHIVE}
-    fi
-fi
-
-CA_BUNDLE_FILE="apple_ca_bundle.pem"
-if [ ! -f "${CA_BUNDLE_FILE}" ]; then
-    echo "Downloading apple root ca bundle"
-    BUNDLE_VERSION=$(curl -A "${UA}" -Ss https://api.github.com/repos/tls-inspector/rootca/tags | jq -r '.[0].name')
-    curl -A "${UA}" -LSs "https://raw.githubusercontent.com/tls-inspector/rootca/${BUNDLE_VERSION}/bundles/${CA_BUNDLE_FILE}" > ${CA_BUNDLE_FILE}
-
-    if [ ! -z "${VERIFY}" ]; then
-        echo "Verifying signature for ${OPENSSL_ARCHIVE}"
-        curl -A "${UA}" -LSs "https://raw.githubusercontent.com/tls-inspector/rootca/${BUNDLE_VERSION}/bundles/${CA_BUNDLE_FILE}.sig" > ${CA_BUNDLE_FILE}.sig
-        openssl dgst -sha256 -verify rootca_signing_key.pem -signature ${CA_BUNDLE_FILE}.sig ${CA_BUNDLE_FILE}
     fi
 fi
 
@@ -80,22 +69,20 @@ function build() {
         patch -p1 < ${FILE}
     done
 
-    cp ../../apple_ca_bundle.pem .
-
-    OPENSSL_ARTIFACTS=$(readlink -f ../openssl_${ARCH}-${SDK}/artifacts)
+    OPENSSL_ARTIFACTS=$(readlink -f ../openssl/openssl_${ARCH}-${SDK}/artifacts)
+    # Need to patch the pkgconfig in openssl
+    perl -pi -e "s,/Users/runner/work/openssl-ios/openssl-ios/build/openssl_${ARCH}-${SDK}/artifacts,${OPENSSL_ARTIFACTS},g" ${OPENSSL_ARTIFACTS}/lib/pkgconfig/*.pc
 
     export CC=$(xcrun -find -sdk ${SDK} gcc)
-    export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -m${SDK}-version-min=12.0"
-    export CPPFLAGS="-I${OPENSSL_ARTIFACTS}/include"
-    export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR} -L${OPENSSL_ARTIFACTS}/lib"
-    BUILD_ARGS="--disable-shared --enable-static --with-openssl --without-libpsl --with-ca-bundle=apple_ca_bundle.pem ${BUILD_ARGS}"
+    export CFLAGS="-arch ${ARCH} -pipe -Os -gdwarf-2 -isysroot ${SDKDIR} -m${SDK}-version-min=18.0"
+    export LDFLAGS="-arch ${ARCH} -isysroot ${SDKDIR}"
 
-    echo "build variables: CC=\"${CC}\" CFLAGS=\"${CFLAGS}\" LDFLAGS=\"${LDFLAGS}\"" >> "${LOG}"
-    echo "configure parameters: ${BUILD_ARGS}" >> "${LOG}"
+    echo "build variables: CC=\"${CC}\" CFLAGS=\"${CFLAGS}\" CPPFLAGS=\"${CPPFLAGS}\" LDFLAGS=\"${LDFLAGS}\"" >> "${LOG}"
+    echo "configure parameters: --host=\"${HOST}-apple-darwin\" ${BUILD_ARGS} --with-openssl=${OPENSSL_ARTIFACTS} --prefix $(pwd)/artifacts" >> "${LOG}"
 
     ./configure \
        --host="${HOST}-apple-darwin" \
-       $BUILD_ARGS \
+       $BUILD_ARGS --with-openssl=${OPENSSL_ARTIFACTS} \
        --prefix $(pwd)/artifacts >> "${LOG}" 2>&1
 
     make -j`sysctl -n hw.logicalcpu_max` >> "${LOG}" 2>&1
@@ -132,23 +119,16 @@ cp -r ${BUILDDIR}/curl_arm64-iphoneos/artifacts/include/curl/*.h ${BUILDDIR}/iph
 libtool -no_warning_for_no_symbols -static -o ${BUILDDIR}/iphonesimulator/curl.framework/curl ${BUILDDIR}/libcurl.a
 cp -r ${BUILDDIR}/curl_arm64-iphonesimulator/artifacts/include/curl/*.h ${BUILDDIR}/iphonesimulator/curl.framework/Headers
 
-# Inject a module map so Swift can consume this
-function make_modulemap {
-    PLATFORM=${1}
-    mkdir -p ${BUILDDIR}/${PLATFORM}/curl.framework/Modules
-    echo "framework module Curl {" > ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
-    echo "    header \"shim.h\"" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
-    for HEADER in $(ls ${BUILDDIR}/${PLATFORM}/curl.framework/Headers); do
-        echo "    header \"${HEADER}\"" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
-    done
-    echo "    export *" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
-    echo "}" >> ${BUILDDIR}/${PLATFORM}/curl.framework/Modules/module.modulemap
-    cp shim.h ${BUILDDIR}/${PLATFORM}/curl.framework/Headers
-}
+rm -rf curl.xcframework
+xcodebuild -create-xcframework \
+    -framework ${BUILDDIR}/iphoneos/curl.framework \
+    -framework ${BUILDDIR}/iphonesimulator/curl.framework \
+    -output curl.xcframework
+plutil -insert CFBundleVersion -string ${VERSION} curl.xcframework/Info.plist
 
 if [ ! -z "${WITH_MODULE_MAP}" ]; then
-    make_modulemap iphoneos
-    make_modulemap iphonesimulator
+    ./inject_module_map.sh iphoneos
+    ./inject_module_map.sh iphonesimulator
 fi
 
 rm -rf curl.xcframework

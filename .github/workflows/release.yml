@@ -52,7 +52,7 @@ jobs:
     steps:
       - name: Checkout Source
         id: checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #pin v4.2.2
       - name: Compile Framework
         id: compile
         run: |
@@ -60,32 +60,27 @@ jobs:
           echo 'trusted-key 0x78E11C6B279D5C91' >> ~/.gnupg/gpg.conf
           echo 'trusted-key 0xF9FEAFF9D34A1BDB' >> ~/.gnupg/gpg.conf
           echo 'trusted-key 0x5CC908FDB71E12C2' >> ~/.gnupg/gpg.conf
-          GPG_VERIFY=1 ./build-ios.sh ${{ needs.query.outputs.curl_version }}
+          VERIFY=1 ./build-ios.sh ${{ needs.query.outputs.curl_version }}
           zip -r curl.xcframework.zip curl.xcframework/
+          ./inject_module_map.sh iphoneos
+          ./inject_module_map.sh iphonesimulator
+          zip -r curl_swift.xcframework.zip curl.xcframework/
       - name: Capture Build Errors
-        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # pin@v4.3.0
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 #pin v4.6.0
         if: failure()
         with:
           name: build_output
           path: build/*_build.log
       - name: Prepare Release
-        id: prepare
+        id: prepare_release
         run: |
-          SHASUM=$(shasum -a 256 curl.xcframework.zip | cut -d ' ' -f1)
-          echo "framework_checksum=${SHASUM}" >> $GITHUB_OUTPUT
-          echo "::notice ::curl.xcframework.zip checksum: ${SHASUM}"
           echo "-----BEGIN EC PRIVATE KEY-----" >> private_key.pem
           echo '${{ secrets.SIGNING_KEY }}' >> private_key.pem
           echo "-----END EC PRIVATE KEY-----" >> private_key.pem
           openssl dgst -sign private_key.pem -sha256 -out curl.xcframework.zip.sig curl.xcframework.zip
+          openssl dgst -sign private_key.pem -sha256 -out curl_swift.xcframework.zip.sig curl_swift.xcframework.zip
           rm -f private_key.pem
-      - name: Make Release If Needed
-        id: release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # pin@v1
-        with:
-          name: ${{ needs.query.outputs.curl_version }}
-          body: "curl.xcframework.zip SHA-256 `${{ steps.prepare.outputs.framework_checksum }}`"
-          tag_name: ${{ needs.query.outputs.curl_version }}
-          files: |
-            curl.xcframework.zip
-            curl.xcframework.zip.sig
+      - name: Make Release
+        id: make_release
+        run: |
+          gh release create -n "${{ needs.query.outputs.curl_version }}" -t "${{ needs.query.outputs.curl_version }}" ${{ needs.query.outputs.curl_version }} curl.xcframework.zip curl.xcframework.zip.sig curl_swift.xcframework.zip curl_swift.xcframework.zip.sig

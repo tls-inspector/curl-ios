@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
 
-          echo "curl_version=${LATEST_CURL_IOS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "curl_version=${LATEST_OFFICIAL_CURL_RELEASE}" >> $GITHUB_OUTPUT
           echo "openssl_version=${LATEST_OPENSSL_IOS_RELEASE}" >> $GITHUB_OUTPUT
 
           echo "::notice ::Latest curl release: ${LATEST_OFFICIAL_CURL_RELEASE}, last published framework: ${LATEST_CURL_IOS_RELEASE}"

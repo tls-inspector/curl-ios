@@ -38,6 +38,7 @@ jobs:
           fi
 
           echo "Getting latest openssl release..."
+          gh api /repos/tls-inspector/openssl-ios/releases/latest --jq '.name'
           LATEST_OPENSSL_IOS_RELEASE=$(gh api /repos/tls-inspector/openssl-ios/releases/latest --jq '.name')
           if [ -z "$LATEST_OFFICIAL_OPENSSL_RELEASE" ]; then
             echo "::error ::Unable to determine latest openssl version, aborting run"

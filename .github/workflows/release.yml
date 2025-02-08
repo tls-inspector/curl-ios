@@ -17,6 +17,7 @@ jobs:
     runs-on: macos-14
     outputs:
       curl_version: ${{ steps.query.outputs.curl_version }}
+      openssl_version: ${{ steps.query.outputs.openssl_version }}
       needs_update: ${{ steps.query.outputs.needs_update }}
     steps:
       - name: "Get latest release"
@@ -24,6 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Getting latest curl release..."
           LATEST_OFFICIAL_CURL_RELEASE=$(curl -sS https://curl.se/info | grep 'Version:' | cut -d ' ' -f2)
           LATEST_CURL_IOS_RELEASE=$(gh api /repos/tls-inspector/curl-ios/releases/latest --jq '.name')
           if [ -z "$LATEST_OFFICIAL_CURL_RELEASE" ]; then
@@ -35,6 +37,7 @@ jobs:
             exit 1
           fi
 
+          echo "Getting latest openssl release..."
           LATEST_OPENSSL_IOS_RELEASE=$(gh api /repos/tls-inspector/openssl-ios/releases/latest --jq '.name')
           if [ -z "$LATEST_OFFICIAL_OPENSSL_RELEASE" ]; then
             echo "::error ::Unable to determine latest openssl version, aborting run"
@@ -45,14 +48,16 @@ jobs:
             exit 1
           fi
 
-          echo "CURL_VERSION=${LATEST_CURL_IOS_RELEASE}" >> $GITHUB_OUTPUT
-          echo "OPENSSL_VERSION=${LATEST_OPENSSL_IOS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "curl_version=${LATEST_CURL_IOS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "openssl_version=${LATEST_OPENSSL_IOS_RELEASE}" >> $GITHUB_OUTPUT
 
           echo "::notice ::Latest curl release: ${LATEST_OFFICIAL_CURL_RELEASE}, last published framework: ${LATEST_CURL_IOS_RELEASE}"
-          echo "curl_version=${LATEST_OFFICIAL_CURL_RELEASE}" >> $GITHUB_OUTPUT
+
           if [[ "${LATEST_CURL_IOS_RELEASE}" != "${LATEST_OFFICIAL_CURL_RELEASE}" ]]; then
+            echo "Update available!"
             echo "needs_update=yes" >> $GITHUB_OUTPUT
           else
+            echo "No updates available"
             echo "needs_update=no" >> $GITHUB_OUTPUT
           fi
           cat $GITHUB_OUTPUT
@@ -70,8 +75,8 @@ jobs:
       - name: Compile Framework
         id: compile
         env:
-          CURL_VERSION: ${{ needs.query.outputs.CURL_VERSION }}
-          OPENSSL_VERSION: ${{ needs.query.outputs.OPENSSL_VERSION }}
+          CURL_VERSION: ${{ needs.query.outputs.curl_version }}
+          OPENSSL_VERSION: ${{ needs.query.outputs.openssl_version }}
         run: |
           gpg --import ./curl.asc
           echo 'trusted-key 0x78E11C6B279D5C91' >> ~/.gnupg/gpg.conf
@@ -100,6 +105,6 @@ jobs:
       - name: Make Release
         id: make_release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create -n "${{ needs.query.outputs.curl_version }}" -t "${{ needs.query.outputs.curl_version }}" ${{ needs.query.outputs.curl_version }} curl.xcframework.zip curl.xcframework.zip.sig curl_swift.xcframework.zip curl_swift.xcframework.zip.sig

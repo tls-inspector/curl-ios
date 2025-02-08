@@ -32,7 +32,10 @@ if [ ! -f "${ARCHIVE}" ]; then
 fi
 
 # Download openssl
-OPENSSL_VERSION=$(curl -A "${UA}" -Ss https://api.github.com/repos/tls-inspector/openssl-ios/tags | jq -r '.[0].name')
+if [ -z ${OPENSSL_VERSION+x} ]; then
+    OPENSSL_VERSION=$(curl -A "${UA}" -Ss https://api.github.com/repos/tls-inspector/openssl-ios/tags | jq -r '.[0].name')
+fi
+echo "Using OpenSSL ${OPENSSL_VERSION}"
 OPENSSL_ARCHIVE="openssl-${OPENSSL_VERSION}.tar.xz"
 if [ ! -f "${OPENSSL_ARCHIVE}" ]; then
     echo "Downloading openssl ${OPENSSL_VERSION}"

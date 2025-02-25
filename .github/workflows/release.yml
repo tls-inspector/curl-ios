@@ -70,21 +70,18 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #pin v4.2.2
       - name: Compile Framework
         id: compile
-        env:
-          CURL_VERSION: ${{ needs.query.outputs.curl_version }}
-          OPENSSL_VERSION: ${{ needs.query.outputs.openssl_version }}
         run: |
           gpg --import ./curl.asc
           echo 'trusted-key 0x78E11C6B279D5C91' >> ~/.gnupg/gpg.conf
           echo 'trusted-key 0xF9FEAFF9D34A1BDB' >> ~/.gnupg/gpg.conf
           echo 'trusted-key 0x5CC908FDB71E12C2' >> ~/.gnupg/gpg.conf
-          VERIFY=1 ./build-ios.sh ${{ needs.query.outputs.curl_version }}
+          ./build-ios.sh -c ${{ needs.query.outputs.curl_version }} -o ${{ needs.query.outputs.openssl_version }} -v -g
           zip -r curl.xcframework.zip curl.xcframework/
           ./inject_module_map.sh iphoneos
           ./inject_module_map.sh iphonesimulator
           zip -r curl_swift.xcframework.zip curl.xcframework/
       - name: Capture Build Errors
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 #pin v4.6.0
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #pin v4.6.2
         if: failure()
         with:
           name: build_output

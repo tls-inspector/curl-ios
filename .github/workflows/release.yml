@@ -70,6 +70,8 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #pin v4.2.2
       - name: Compile Framework
         id: compile
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gpg --import ./curl.asc
           echo 'trusted-key 0x78E11C6B279D5C91' >> ~/.gnupg/gpg.conf
